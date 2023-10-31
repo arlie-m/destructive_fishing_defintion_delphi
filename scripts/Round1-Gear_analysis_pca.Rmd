@@ -1,0 +1,166 @@
+---
+title: "Round 1 - Gear analysis"
+author: "Arlie McCarthy and Josh Brian"
+date: "`r Sys.Date()`"
+output: github_document
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "workflow") })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(devtools)
+install_github("vqv/ggbiplot")
+library(ggbiplot)
+library(missMDA)
+library(tidyverse)
+library(here)
+library(readxl)
+library(ggh4x)
+library(cowplot)
+```
+
+## Load data
+
+```{r load data}
+surveydata <- read_excel(here::here("data", "R1_gear_results.xlsx"), sheet = "Sheet1")
+gear_groups <- read_excel(here::here("data", "2021_04_fishing_gear_matrix_REV.xlsx"), sheet = "gear_categories")
+```
+
+## Generate figures showing 
+General figure for the manuscript showing the groups of gear types and the classifications from survey respondents. Groups are based on larger categories. 
+
+```{r re-shape for plotting}
+long_data <- pivot_longer(surveydata %>% select("name", "Purse seines":"Blast/explosives/dynamite"), cols = "Purse seines":"Blast/explosives/dynamite", values_to = "response", names_to = "Gear", names_repair = "check_unique") %>% 
+  join(gear_groups) %>% 
+  drop_na() %>% 
+  dplyr::group_by(Gear) %>% 
+  dplyr::mutate(gear_median = median(response)) %>% 
+  dplyr::group_by(Category) %>% 
+  dplyr::mutate(cat_median = median(response))
+
+cat_levels <- long_data %>% 
+  dplyr::group_by(Category) %>% 
+  dplyr::summarise(mean(cat_median))
+cat_levels
+
+long_data$Category <- factor(long_data$Category, levels = c("Chemical and Blast", "Dredges", "Gillnets and entangling nets", "Trawls", "Seine nets", "Surrounding nets", "Falling gear", "Hooks and lines", "Lift nets", "Traps", "Miscellaneous"))
+```
+Now that the data is in the correct format, we can visualise it as a violin plot.
+
+```{r gear plot}
+gear_plot <- ggplot(long_data, aes(x = short_name, y = response, fill = gear_median)) + 
+  geom_violin(alpha = 0.7, colour = "darkgrey") +
+  stat_summary(fun = "median", colour = "black", size = 2, geom = "point") +
+  scale_fill_viridis_c(name = "Median response", alpha = 0.7) +
+  scale_color_viridis_c() +
+  facet_wrap(~Category, scales = "free_x", shrink = FALSE) +
+  theme_cowplot() +
+  scale_x_discrete(expand = expansion(add = 1)) +
+  theme(axis.text.x = element_text(size = 7, angle = 30),
+        legend.position = c(0.78, 0.15),
+        axis.text.y = element_text(size = 7),
+        strip.text.y = element_text(size = 9,
+                                    angle = 0),
+        axis.title = element_text(size = 9),
+        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        strip.text = element_text(size = 9))+
+  labs(x = "Fishing gear or practice", y = "Potential destructiveness")
+gear_plot
+```
+save the plot
+
+```{r save gear plot}
+save_plot(here::here("figures", "gear_plot.png"), gear_plot, base_width = 180, base_height = 125, units = "mm")
+```
+
+Create table showing the summary statistics for each gear.
+
+```{r summary stats}
+summary_data <- long_data %>% 
+  drop_na() %>% 
+  dplyr::group_by(Category, Gear) %>% 
+  dplyr::summarise(count = length(response),
+            mean = mean(response), 
+            stdev = sd(response),
+            median = median(response)) %>% 
+  dplyr::select(Category, Gear, median, everything())
+summary_data
+```
+
+# Run Principal Components Analysis
+
+We first run a standard PCA analysis. 
+
+```{r pca1}
+#gearpca <- prcomp(surveydata[ ,c(8:55)], center=TRUE, scale. = TRUE)
+```
+
+Note that this doesn't work because there are missing values. To correct for this we need to impute data. We ese imputePCA function from missMDA package as it is the best and most defendable method 
+(see Dray, S., & Josse, J. (2015). Principal component analysis with missing values:a comparative survey of methods. Plant Ecology, 216(5), 657-667.)
+
+```{r impute data}
+#just select the columns of interest
+datatoimpute <- select(surveydata, "Purse seines":"Blast/explosives/dynamite")
+
+#impute the missing values 
+
+imputeddata <- imputePCA(datatoimpute, ncp=2)
+imputedmatrix <- as.data.frame(imputeddata$completeObs)
+
+#Extract possible correlating variables
+
+variables <- select(surveydata, homecontinent:oceanregion)
+
+#combine the variables and imputed data
+
+pcadata <- bind_cols(variables, imputedmatrix)
+```
+
+Now we can actually run the PCA
+
+```{r pca2}
+gearpca <- prcomp(pcadata[ ,c(7:54)], center=TRUE, scale. = TRUE)
+summary(gearpca)
+```
+
+## Visualise the PCA
+Now the we have the PCA we can plot it. Here we use a range of groupings (based on demographic data of respondents). 
+
+```{r}
+#Show just dots (individuals)
+ggbiplot(gearpca, var.axes=FALSE) + theme_classic() 
+
+#Show with gears overlaid
+ggbiplot(gearpca) + theme_classic() 
+
+#Look at comparison with sector
+ggbiplot(gearpca, ellipse=TRUE, groups=pcadata$sector, var.axes=FALSE) + theme_classic() 
+
+#Look at comparison with ocean region
+ggbiplot(gearpca, ellipse=TRUE, groups=pcadata$oceanregion, var.axes=FALSE) + theme_classic() 
+
+#Look at comparison with home continent
+ggbiplot(gearpca, ellipse=TRUE, groups=pcadata$homecontinent, var.axes=FALSE) + theme_classic() 
+
+#Look at comparison with whether their home and work continents are the same
+ggbiplot(gearpca, ellipse=TRUE, groups=pcadata$homeworkdiff, var.axes=FALSE) + theme_classic() 
+```
+
+## Save plots
+
+Finally, we save the sector plot for use in the manuscript (supplementary information).
+```{r}
+r1_sector_pca <- ggbiplot(gearpca, ellipse=TRUE, groups=pcadata$sector, var.axes=FALSE) +
+geom_point(aes(colour = pcadata$sector)) +
+scale_color_brewer(type = "qual", palette = "Dark2") + 
+  theme_classic()
+r1_sector_pca
+ggsave2(here::here("figures", "r1_sector_pca.jpg"),
+  plot = r1_sector_pca,
+  device = "jpg",
+  width = 20,
+  height = 10,
+  units = "cm")
+```

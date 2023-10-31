@@ -1,0 +1,153 @@
+---
+title: "Round 1 - Thematic Analysis"
+author: "Arlie McCarthy"
+date: "`r Sys.Date()`"
+output: github_document
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "workflow") })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(cowplot)
+library(here)
+library(ggimage)
+```
+
+## Set-up
+
+A thematic analysis was conducted on free text questions in round 1 of the Delphi process. From these answers, concepts and impacts associated with destructive fishing as well as possible drivers were identified. The proportion of responses that included the different drivers were calculated (separely in Microsoft excel). This script takes the data on drivers and creates figures to use in publication. 
+
+```{r insert data}
+#percentage of responses to question 3 listing concepts and broad groups of impacts associated with destructive fishing
+# data from Q3andQ5 coding, excel sheet Data for figure Q3
+concepts <- tibble(category  = c("Irrecoverability",	"Long-lasting impacts",	"Context Dependence",	"Illegality",	"Avoidability", "Environmental impacts", "Socio-economic harm", "Economic losses"),
+                  percentage = c(22.5, 16.25, 10, 6.25, 1.25, 92.5, 12.5, 8.75),
+                  theme = c("Concept", 
+                            "Concept",
+                            "Concept",
+                            "Concept",
+                            "Concept",
+                            "Environmental impact", 
+                            "Social impact", 
+                            "Economic impact"),
+                  image = c(here("data", "icon_concept.png"), 
+                            here("data", "icon_concept.png"),
+                            here("data", "icon_concept.png"),
+                            here("data", "icon_concept.png"),
+                            here("data", "icon_concept.png"),
+                            here("data", "icon_environmental.png"),
+                            here("data", "icon_social.png"),
+                            here("data", "icon_economic.png"))
+                  )
+
+# percentage of responses to question 5 listing impacts of destructive fishing
+# This is being split into two, the first showing overall mentions of the 3 broad categories
+# the second showing the detail of the various environmental impacts
+# data from Q3andQ5 coding, excel sheet Data for figure Q5
+impacts_broad <- tibble (category = c("Social\nImpact", "Economic\nImpact", "Environmental\nImpact"),
+                         percentage = c(48, 52, 91),
+                         theme = c("Social", "Economic", "Environmental"),
+                         image = c(here("data", "icon_social.png"), here("data", "icon_economic.png"), here("data", "icon_environmental.png")))
+
+
+impacts_environmental <- tibble(category  = c("Habitat Degradation", "Non-Target Species\nImpacts", "Target Species\nImpacts", "Non-Specific Marine\nEnvironmental Impacts", "Benthic/VME\nImpacts", "Water Column\nImpacts"),
+                  percentage = c(24,	41,	43,	37,	46,	2),
+                  theme = c("Environmental", "Environmental", "Environmental", "Environmental", "Environmental", "Environmental"),
+                  image = c(here("data", "icon_environmental.png"))
+                  )
+
+#percentage of responses to question 7 listing drivers of destructive fishing
+# data from excel file Q7_coding&tableofdrivers
+drivers <- tibble(category  = c("Perverse economic\nincentives",	"Political/governance\nfailure",	"Social disruption/\ninequity",	"Technological limitations",	"Negative environmental\nfeedback"),
+                  percentage = c(69, 47, 32, 22, 9),
+                  image = c(here("data", "icon_drivers.png"))
+                  )
+```
+
+## Individual plots
+
+Concepts figures
+
+```{r concepts}
+pal_concepts <- c("#80B1D3", "#FDB462", "#8DD3C7", "#FB8072")
+concepts_fig <- ggplot() + geom_bar(data = concepts, aes(x = reorder(category, percentage), y=percentage,fill = theme), position="stack", stat="identity", width = 0.75) + 
+  geom_image(data=concepts, aes(image = image, x = reorder(category, percentage), y=percentage, fill = theme), position = "identity", nudge_y = 3, size = 0.08) +
+  scale_color_manual(values=pal_concepts, aesthetics = "fill") +
+  labs(y="% respondent definitions with concept / impact categories",x="", fill = "Category")  +
+  ylim(0, 100) +
+  coord_flip()  +
+  theme_cowplot() +
+  theme(axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8),
+        strip.text.y = element_text(size = 8,
+                                    angle = 0),
+        legend.position = c(0.7, 0.3),
+        axis.title = element_text(size = 9),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 9))
+concepts_fig
+```
+
+Impacts figure - from R1Q5
+```{r impacts}
+pal_impacts_b <- c("#FDB462","#8DD3C7", "#FB8072")
+impacts_broad_fig <- ggplot() + geom_bar(data=impacts_broad, aes(x = reorder(category, percentage), y=percentage, fill = theme), position="stack", stat="identity", width = 0.75) + 
+  geom_image(data=impacts_broad, aes(image = image, x = reorder(category, percentage), y=percentage, fill = theme), position = "identity", nudge_y = 8, size = 0.1) +
+  labs(y="% responses with\nimpacts in broad themes",x="")  +
+  scale_color_manual(values=pal_impacts_b, aesthetics = "fill") +
+  ylim(0, 100) +
+  coord_flip() +
+  theme_cowplot() +
+  theme(axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8, angle = 0),
+        strip.text.y = element_text(size = 8,
+                                    angle = 0),
+        axis.title = element_text(size = 9)) +
+  theme(legend.position = "none")
+impacts_broad_fig
+
+impacts_environmental_fig <- ggplot() + geom_bar(data=impacts_environmental, aes(x = reorder(category, percentage), y=percentage), fill = c("#8DD3C7"), position="stack", stat="identity", width = 0.75) + 
+  labs(y="% responses with\ndetailed environmental impacts",x="")  +
+  ylim(0, 100) +
+  coord_flip() +
+  theme_cowplot() +
+  theme(axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8, angle = 0),
+        strip.text.y = element_text(size = 8,
+                                    angle = 0),
+        axis.title = element_text(size = 9)) +
+  theme(legend.position = "none") +
+  draw_image(c(here("data", "icon_environmental.png")), x = 1, y = 90, scale = 20)
+impacts_environmental_fig
+```
+
+Drivers figure
+```{r drivers}
+drivers_fig <- ggplot() + geom_bar(data=drivers, aes(x = reorder(category, percentage), y=percentage),fill = "#BEBADA", position="stack", stat="identity", width = 0.75) + 
+  labs(y="% responses with different drivers",x="")  +
+  ylim(0, 100) +
+  coord_flip() +
+  theme_cowplot() +
+  theme(axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8, angle = 0),
+        strip.text.y = element_text(size = 8,
+                                    angle = 0),
+        axis.title = element_text(size = 9)) #+
+#  draw_image(c(here("data", "icon_drivers.png")), x = 1.5, y = 90, scale = 20)
+drivers_fig
+```
+
+## Putting them together and saving them
+
+
+```{r combined figure}
+plot_impacts <- plot_grid(impacts_broad_fig, impacts_environmental_fig, ncol = 2, labels = c("b", "c"), rel_widths = c(1, 1.5), greedy = TRUE)
+plot_impacts
+plot_all <- plot_grid(concepts_fig, plot_impacts, nrow = 2, labels = c("a", ""))
+plot_all
+
+save_plot(here("figures", "concepts-impacts_fig.png"), plot_all, base_width = 183, base_height = 125, units = "mm")
+save_plot(here("figures", "drivers_fig.png"), drivers_fig, base_width = 183, base_height = 50, units = "mm")
+```

@@ -1,0 +1,376 @@
+---
+title: "Demographic maps and tables"
+author: "Arlie McCarthy"
+date: "`r Sys.Date()`"
+output: github_document
+always_allow_html: true
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "workflow") })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(janitor)
+library(here)
+library(sf)
+library(rnaturalearth)
+library(cowplot)
+library(readxl)
+library(scales)
+library(kableExtra)
+```
+
+## Importing data
+
+Read the data from the excel spreadsheet of data from round 1 of the survey and create an object with only the country information.
+
+```{r survey results}
+knitr::opts_chunk$set(message=FALSE, warnings=FALSE)
+DDF_SurveyRound1Results <- read_excel(here::here("data", "DDF_SurveyRound1Results.xlsx"),
+sheet = "csv", col_types = c("numeric",
+"numeric", "text", "text", "numeric",
+"numeric", "numeric", "numeric",
+"text", "text", "text", "numeric",
+"numeric", "numeric", "numeric",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"text", "text", "text", "text", "text",
+"numeric", "numeric"))
+country_information <- DDF_SurveyRound1Results %>% 
+  mutate(country_from = `1.1000000000000001`, country_worked = `1.2`, oceans_worked = `2.6`,
+        sector = `2.2000000000000002`, name = `1.3`) %>% 
+  select(name, country_from, country_worked, oceans_worked, sector) %>%
+  clean_names()
+
+r2_responses_longer <- read_excel(here::here("data","R2_responses.xlsx"), sheet = "responses")
+
+country_information_r2 <- r2_responses_longer %>% 
+  clean_names() %>% 
+  mutate(country_worked = country_predominantely_work,
+         oceans_worked = ocean_basin) %>% 
+  select(name, country_from, country_worked, oceans_worked, sector)
+
+r3_responses_longer <- read_excel(here::here("data", "Rd3_Results_Final.xlsx"), sheet = "responses")
+
+country_information_r3 <- r3_responses_longer %>% 
+  clean_names() %>% 
+  select(name, sector)
+```
+
+Import the country baselayer for mapping.
+```{r import world map}
+world <- ne_countries(scale = "medium", returnclass = "sf") %>% 
+  st_transform(crs = "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m no_defs")
+```
+
+## Check that the countries given in the survey data align with the countries in the mapping data.
+
+```{r check respondent countries against map data}
+country_information <- country_information %>% 
+  mutate(country_from_in_map = case_when(country_from %in% world$name_long ~ TRUE, 
+                                         TRUE ~ FALSE),
+         country_worked_in_map = case_when(country_worked %in% world$name_long ~ TRUE, 
+                                         TRUE ~ FALSE)
+  )
+country_information %>% 
+  filter(country_from_in_map == FALSE) %>% 
+  group_by(country_from) %>% 
+  select(-name, -country_worked) %>% 
+  slice(1)
+country_information %>% 
+  filter(country_worked_in_map == FALSE) %>% 
+  select(-name, -country_from) %>% 
+  group_by(country_worked) %>% 
+  slice(1)
+```
+
+From that we see that the following countries are given as locations but not listed in the map data:
+- United Kingdom of Great Britain and Northern Ireland  
+- United States of America  
+- Hong Kong (S.A.R.)  
+  
+The equivalent locations in the map data are:
+- United Kingdom  
+- United States  
+- Hong Kong
+
+Therefore need to change the names for plotting so that they align with the map data.
+
+```{r aligning respondent countries with map data}
+#create a consistent country information dataframe for R1
+country_information <- country_information %>% 
+  mutate(country_from = case_when(country_from == "United Kingdom of Great Britain and Northern Ireland" ~ "United Kingdom",
+                                  country_from == "UK" ~ "United Kingdom",
+                                  country_from == "United States of America" ~ "United States",
+                                  country_from == "Hong Kong (S.A.R.)" ~ "Hong Kong",
+                                         TRUE ~ country_from),
+         country_worked = case_when(country_worked == "United Kingdom of Great Britain and Northern Ireland" ~ "United Kingdom",
+                                    country_worked == "UK" ~ "United Kingdom",
+                                    country_worked == "United States of America" ~ "United States",
+                                    country_worked == "Hong Kong (S.A.R.)" ~ "Hong Kong",
+                                         TRUE ~ country_worked)
+  )
+#create a consistent country information dataframe for R2
+country_information_r2 <- country_information_r2 %>% 
+  mutate(country_from = case_when(country_from == "United Kingdom of Great Britain and Northern Ireland" ~ "United Kingdom",
+                                  country_from == "UK" ~ "United Kingdom",
+                                  country_from == "United States of America" ~ "United States",
+                                  country_from == "Hong Kong (S.A.R.)" ~ "Hong Kong",
+                                         TRUE ~ country_from),
+         country_worked = case_when(country_worked == "United Kingdom of Great Britain and Northern Ireland" ~ "United Kingdom",
+                                    country_worked == "UK" ~ "United Kingdom",
+                                    country_worked == "United States of America" ~ "United States",
+                                    country_worked == "Hong Kong (S.A.R.)" ~ "Hong Kong",
+                                         TRUE ~ country_worked)
+  )
+#create a consistent country information dataframe for R3
+country_information_r3 <- country_information_r3 %>% 
+  full_join(country_information_r2 %>% select(-sector), by = "name") %>% 
+  filter(!is.na(sector))
+```
+
+## Reshape and joing country information data to mapping
+
+```{r create R1 summary dataframes}
+#country from
+country_from_summarised <- country_information %>% 
+  dplyr::group_by(country_from) %>% 
+  dplyr::summarise(from = n()) %>% 
+  dplyr::rename(name_long = country_from, from_r1 = from) %>% 
+  dplyr::mutate(from_log_r1 = log10(from_r1))
+
+#country worked
+country_worked_summarised <- country_information %>% 
+  dplyr::group_by(country_worked) %>% 
+  dplyr::summarise(worked = n()) %>% 
+  dplyr::rename(name_long = country_worked, worked_r1 = worked) %>% 
+  dplyr::mutate(worked_log_r1 = log10(worked_r1))
+
+#all data
+survey_data_summarised <- country_from_summarised %>% 
+  left_join(country_worked_summarised)
+
+```
+
+Now, prepare data from rounds 2 and 3 to be added to the above data frame so that the information from all rounds is in the same place. 
+
+```{r summary dataframes for r2, r3}
+#country from R2
+country_from_r2_summarised <- country_information_r2 %>% 
+  dplyr::group_by(country_from) %>% 
+  dplyr::summarise(from = n()) %>% 
+  dplyr::rename(name_long = country_from, from_r2 = from) %>% 
+  dplyr::mutate(from_log_r2 = log10(from_r2))
+#country worked R2
+country_worked_r2_summarised <- country_information_r2 %>% 
+  dplyr::group_by(country_worked) %>% 
+  dplyr::summarise(worked = n()) %>% 
+  dplyr::rename(name_long = country_worked, worked_r2 = worked) %>% 
+  dplyr::mutate(worked_log_r2 = log10(worked_r2))
+#all data R2
+survey_data_summarised_r2 <- country_from_r2_summarised %>% 
+  left_join(country_worked_r2_summarised)
+
+#country from R3
+country_from_r3_summarised <- country_information_r3 %>% 
+  dplyr::group_by(country_from) %>% 
+  dplyr::summarise(from = n()) %>% 
+  dplyr::rename(name_long = country_from, from_r3 = from) %>% 
+  dplyr::mutate(from_log_r3 = log10(from_r3))
+#country worked R2
+country_worked_r3_summarised <- country_information_r3 %>% 
+  dplyr::group_by(country_worked) %>% 
+  dplyr::summarise(worked = n()) %>% 
+  dplyr::rename(name_long = country_worked, worked_r3 = worked) %>% 
+  dplyr::mutate(worked_log_r3 = log10(worked_r3))
+#all data R2
+survey_data_summarised_r3 <- country_from_r3_summarised %>% 
+  left_join(country_worked_r3_summarised)
+```
+
+Now combining the data from all rounds to generate maps and tables,
+
+
+```{r all rounds maps and tables}
+#join the summary data and gathering economic information
+country_summaries <- survey_data_summarised %>% 
+  full_join(survey_data_summarised_r2) %>% 
+  full_join(survey_data_summarised_r3) %>% 
+  left_join(world %>% select(name_long, economy, income_grp, region_wb))
+
+#for maps for R1
+world_r1 <- world %>% 
+  left_join(survey_data_summarised)
+```
+Table of countries from and worked
+
+```{r table of country information}
+country_summaries$region_wb <- factor(country_summaries$region_wb, levels = c("Europe & Central Asia", "East Asia & Pacific", "North America", "Latin America & Caribbean", "Sub-Saharan Africa", "South Asia", NA))
+country_summary_table <- country_summaries %>% 
+  select(region_wb, name_long, income_grp, worked_r1, worked_r2, worked_r3, from_r1, from_r2, from_r3, ) %>% 
+  mutate(name_long = ifelse(is.na(name_long), "No answer", name_long),
+         income_grp = ifelse(is.na(income_grp), "No answer", income_grp),
+         region_wb = ifelse(is.na(region_wb), "No answer", region_wb)) %>% 
+  arrange(region_wb, desc(worked_r1)) %>% 
+  replace(is.na(.), 0)
+
+country_summary_table %>% 
+  kable(booktabs = TRUE) %>%
+  kable_styling(font_size = 10)
+```
+
+## Making maps of country information
+
+```{r making demographic maps}
+library(viridis)
+new_pal <- c("#0D0887FF", "#42049EFF", "#6A00A8FF", "#900DA4FF", "#B12A90FF", "#CC4678FF", "#E16462FF", "#F1844BFF", "#FCA636FF", "#FCCE25FF")
+plot_countries_from <- ggplot() +
+  geom_sf(data = world_r1,
+          aes(fill = from_r1,
+              colour = from_r1)
+          ) +
+  scale_fill_gradientn(name = "", na.value="snow2", trans = "log", colours = new_pal, breaks= breaks_pretty()) +
+  scale_colour_gradientn(name = "", na.value="snow3", trans = "log", colours = new_pal, breaks= breaks_pretty()) +
+  labs(title="Number of respondents from each country - Round 1") +
+  theme_minimal()
+
+plot_countries_from
+
+
+plot_countries_worked <- ggplot() +
+  geom_sf(data = world_r1,
+          aes(fill = worked_r1,
+              colour = worked_r1)
+          ) +
+  scale_fill_gradientn(name = "", na.value="snow2", trans = "log", colours = new_pal, breaks= pretty_breaks()) +
+  scale_colour_gradientn(name = "", na.value="snow3", trans = "log", colours = new_pal, breaks= pretty_breaks())  +
+  labs(title="Number of respondents working in each country") +
+  theme_minimal()
+
+plot_countries_worked
+
+plot_both <- plot_grid(plot_countries_from, plot_countries_worked, ncol = 1)
+plot_both
+
+#save_plot(here("survey_demographics_map.pdf"), plot_both, base_width = 183, base_height = 200, units = "mm")
+#save_plot(here("survey_demographics_R1_country_from.pdf"), plot_countries_from, base_width = 183, base_height = 100, units = "mm")
+#save_plot(here("survey_demographics_R1_country_from.png"), plot_countries_from, base_width = 183, base_height = 100, units = "mm")
+```
+
+## Table of sector that people (predominantly) work in
+For round 1, respondents could list as many sectors as they like. For rounds 2 and 3 they were asked to select the sector that best represents their career. First step, need to extract the information from round 1, similar to how the counts for each ocean were extracted. 
+
+```{r sectors worked r1}
+sector_r1 <- country_information %>% 
+  mutate("Industry (commercial fishing)" = str_count(country_information$sector, "Industry \\(commercial fishing\\)"),
+         "Civil society (environmental NGO)" = str_count(country_information$sector, "Civil society \\(environmental NGO\\)"),
+         "Intergovernmental body" = str_count(country_information$sector, "Intergovernmental body"),
+         "Civil society (other NGO)" = str_count(country_information$sector, "Civil society \\(other NGO\\)"),
+         "Academia" = str_count(country_information$sector, "Academia"),
+         "Government (environment)" = str_count(country_information$sector, "Government \\(environment\\)"),
+          "Industry (other)" = str_count(country_information$sector, "Industry \\(other\\)"),
+          "Government (fisheries management)" = str_count(country_information$sector, "Government \\(fisheries management\\)"),
+         "Civil society (Small-scale fisheries/Rights holder institution)" = str_count(country_information$sector, "Civil society \\(Small-scale fisheries/Rights holder institution\\)")
+        ) %>% 
+  select("Industry (commercial fishing)", "Industry (other)",  "Government (environment)", "Government (fisheries management)",  "Intergovernmental body", "Academia", "Civil society (environmental NGO)", "Civil society (Small-scale fisheries/Rights holder institution)", "Civil society (other NGO)") %>%
+  pivot_longer(cols = everything(), names_to = "sector", values_to = "num_responses") %>% 
+  group_by(sector) %>% 
+  summarise(num_responses_r1 = sum(num_responses))
+```
+
+Now for rounds 2 and 3
+
+```{r sector r2 and r3}
+sector_r2 <- country_information_r2 %>% 
+  dplyr::group_by(sector) %>% 
+  dplyr::summarise(num_responses_r2 = n())
+
+sector_r3 <- country_information_r3 %>% 
+  dplyr::group_by(sector) %>% 
+  dplyr::summarise(num_responses_r3 = n())
+```
+
+combine them all
+
+```{r sector combined}
+sector_all <- sector_r1 %>% 
+  full_join(sector_r2) %>% 
+  full_join(sector_r3) %>% 
+  arrange(desc(num_responses_r1)) %>% 
+  replace(is.na(.), 0)
+
+sector_all %>% 
+  kable(booktabs = TRUE) %>%
+  kable_styling(font_size = 10)
+```
+## Map of oceans with respondents expertise
+
+```{r data frame for ocean expertise}
+ocean_expertise <- country_information %>% 
+  mutate(atlantic_ocean_north = str_count(country_information$oceans_worked, "Atlantic Ocean \\(North\\)"),
+         atlantic_ocean_south = str_count(country_information$oceans_worked, "Atlantic Ocean \\(South\\)"),
+         pacific_ocean_north = str_count(country_information$oceans_worked, "Pacific Ocean \\(North\\)"),
+         pacific_ocean_south = str_count(country_information$oceans_worked, "Pacific Ocean \\(South\\)"),
+         indian_ocean = str_count(country_information$oceans_worked, "Indian Ocean"),
+         southern_ocean = str_count(country_information$oceans_worked, "Southern Ocean")
+        ) %>% 
+  select(atlantic_ocean_north, atlantic_ocean_south, pacific_ocean_north, pacific_ocean_south, indian_ocean, southern_ocean) %>%
+  pivot_longer(cols = everything(), names_to = "ocean", values_to = "num_responses") %>% 
+  group_by(ocean) %>% 
+  summarise(num_responses = sum(num_responses))
+#create coordinate information for each ocean
+ocean_expertise <- ocean_expertise %>% 
+  mutate(x = c(-45, -10, 80, -140, -140, 0),
+         y = c(35, -20, -15, 35, -35, -60)
+  ) %>%
+  st_as_sf(coords = c("x", "y"), remove = FALSE, crs = 4326) %>% 
+  st_transform(crs = "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m no_defs")
+```
+
+Now that I have the data in the format I need, now I need to plot it on a map.
+
+```{r}
+plot_oceans <- ggplot() +
+  geom_sf(data = world_r1,
+         fill = "snow2",
+         colour = "snow2") +
+  geom_sf(data = ocean_expertise,
+          colour = "skyblue", 
+          #size = 10,
+          aes(
+            size = num_responses
+            )) +
+  geom_sf_text(data = ocean_expertise,
+               aes(label = num_responses)) +
+  labs(title="Number of respondents with expertise in each ocean") +
+  scale_size(range = c(3, 15), name = "") +
+  xlab(label = NULL) +
+  ylab(label = NULL) +
+  theme_minimal()
+plot_oceans
+save_plot(here(here::here("figures", "Q2-6ocean_expertise_map.png")), plot_oceans, base_width = 183, base_height = 100, units = "mm")
+```
