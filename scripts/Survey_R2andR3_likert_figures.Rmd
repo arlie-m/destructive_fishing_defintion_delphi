@@ -63,7 +63,10 @@ tabr2 <- r2_likert_responses %>%
                   "Neither agree nor disagree" = 0,
                   "Somewhat agree" = 0,
                   "Strongly agree" = 0)) %>% 
-               left_join(r2_likert_questions)
+               left_join(r2_likert_questions) %>% 
+  mutate(question = case_when(q_start_phrase == "To what extent do you agree or disagree that the term destructive fishing:" ~ paste("Destructive Fishing", tolower(question), sep = " "),
+                              q_start_phrase != "To what extent do you agree or disagree that the term destructive fishing:" ~ question))
+tabr2$middle <- tabr2$`Neither agree nor disagree`
 mylevelsr2<-c("Strongly disagree", "Somewhat disagree", "Neither agree nor disagree", "Somewhat agree",  "Strongly agree")
 
 round3_question_key <- read_excel(here::here("data/round3_question_key.xlsx"))
@@ -105,6 +108,10 @@ tabr3$disagree = tabr3$`Strongly disagree` + tabr3$`Somewhat disagree`
 tabr3$sum_pcent = tabr3$`Strongly agree` + tabr3$`Somewhat agree` + tabr3$`Strongly disagree` + tabr3$`Somewhat disagree`
 #tabr3$question = paste( "* ", tabr3$question)
 # this line removed to remove the asterisk in the final figures
+tabr3 <- tabr3 %>% 
+  mutate(question = case_when(q_start_phrase == "To what extent do you agree or disagree that the term destructive fishing:" ~ paste("Destructive Fishing", tolower(question), sep = " "),
+                              q_start_phrase != "To what extent do you agree or disagree that the term destructive fishing:" ~ question))
+tabr3$middle <- tabr3$`Prefer not to say`
 ```
 
 
@@ -121,7 +128,7 @@ tabr3.v2 <- tabr3 %>%
   select("question",
          "Strongly disagree",
          "Somewhat disagree",
-         "Prefer not to say", 
+         "middle", 
          "Somewhat agree", 
          "Strongly agree",
          "q_number",
@@ -146,16 +153,22 @@ tab2<- tab %>%
                 `Somewhat disagree`,
                 `Somewhat agree`,
                 `Strongly agree`,
-                -`Prefer not to say`,
-                -`Neither agree nor disagree`,
+                `middle`,
                 q_number:round) %>% 
-  pivot_longer(cols = c(2:5))
+  pivot_longer(cols = c(2:6))
 tab3 <- tab2 %>% 
   mutate(col = case_when(name == "Strongly disagree" ~ "#CA0020",
                          name == "Somewhat disagree" ~ "#F4A582",
                          name == "Somewhat agree" ~ "#92C5DE",
                          name == "Strongly agree" ~ "#0571B0"))
 tab3$value<-tab3$value*100
+
+middle_values <- tab3 %>% 
+  filter(name == "middle") %>% 
+  select(question, value) %>% 
+  mutate(value = paste(round(value), "%", sep = " "))
+mid <- middle_values$value
+names(mid) <- middle_values$question
 ```
 
 Create the high and low values to make the plot
@@ -206,18 +219,24 @@ chars_concept_fig <- ggplot() + geom_bar(data=highs_chars_concept, aes(x = reord
   scale_y_continuous(limits = c(-100, 100), breaks = seq(-100, 100, by = 10)) + 
   theme_cowplot() + 
   coord_flip() +
-  labs(y="",x="") +
+  labs(y="Percentage of responses that agree or disagree",x="") +
   theme(axis.text.y = element_text(size = 8),
         axis.text.x = element_text(size = 8,
                                    hjust = 1,
                                    angle = 45),
         strip.text.y = element_text(size = 8,
                                     angle = 0)) +
-  theme(legend.position = c(0.95, -0.1),
+  theme(legend.position = "bottom",
         legend.direction = "horizontal",
         legend.justification="right",
         legend.title = element_text(size = 9),
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 8),
+        axis.ticks = element_blank(),
+        axis.title = element_text(size = 9)) +
+  guides(y.sec = guide_axis_manual(
+    title = "Percentage of responses 'Neither agree nor disagree' or 'Prefer not to say'",
+    breaks = names(mid),
+    labels = mid))
 
 chars_concept_fig
 ```
@@ -227,7 +246,7 @@ ggsave2(filename = here::here("figures", "concept_figure.png"),
   plot = chars_concept_fig,
   device = "png",
   width = 183,
-  height = 123,
+  height = 133,
   units = "mm"
 )
 ```
@@ -245,18 +264,24 @@ chars_scope_fig <- ggplot() + geom_bar(data=highs_chars_scope,  aes(x = reorder(
   scale_y_continuous(limits = c(-100, 100), breaks = seq(-100, 100, by = 10)) + 
   theme_cowplot() + 
   coord_flip() +
-  labs(y="",x="") +
+   labs(y="Percentage of responses that agree or disagree",x="") +
   theme(axis.text.y = element_text(size = 8),
         axis.text.x = element_text(size = 8,
                                    hjust = 1,
                                    angle = 45),
         strip.text.y = element_text(size = 8,
                                     angle = 0)) +
-  theme(legend.position = c(0.95, -0.08),
+  theme(legend.position = "bottom",
         legend.direction = "horizontal",
         legend.justification="right",
         legend.title = element_text(size = 9),
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 8),
+        axis.ticks = element_blank(),
+        axis.title = element_text(size = 9)) +
+  guides(y.sec = guide_axis_manual(
+    title = "Percentage of responses 'Neither agree nor disagree' or 'Prefer not to say'",
+    breaks = names(mid),
+    labels = mid))
 chars_scope_fig
 ```
 
@@ -284,18 +309,24 @@ impacts_eco_fig <- ggplot() + geom_bar(data=highs_impacts_eco, aes(x = reorder(q
   scale_y_continuous(limits = c(-100, 100), breaks = seq(-100, 100, by = 10)) + 
   theme_cowplot() + 
   coord_flip() +
-  labs(y="",x="") +
+   labs(y="Percentage of responses that agree or disagree",x="") +
   theme(axis.text.y = element_text(size = 8),
         axis.text.x = element_text(size = 8,
                                    hjust = 1,
                                    angle = 45),
         strip.text.y = element_text(size = 8,
                                     angle = 0)) +
-  theme(legend.position = c(0.95, -0.15),
+  theme(legend.position = "bottom",
         legend.direction = "horizontal",
         legend.justification="right",
         legend.title = element_text(size = 9),
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 8),
+        axis.ticks = element_blank(),
+        axis.title = element_text(size = 9)) +
+  guides(y.sec = guide_axis_manual(
+    title = "Percentage 'Neither agree nor disagree' or 'Prefer not to say'",
+    breaks = names(mid),
+    labels = mid))
 #  theme(legend.position = "none")
 impacts_eco_fig
 ```
@@ -305,7 +336,7 @@ ggsave2(filename = here::here("figures", "eco_impacts_figure.png"),
   plot = impacts_eco_fig,
   device = "png",
   width = 183,
-  height = 103,
+  height = 113,
   units = "mm"
 )
 ```
@@ -322,18 +353,24 @@ impacts_socio_fig <- ggplot() + geom_bar(data=highs_impacts_socio, aes(x = reord
   scale_y_continuous(limits = c(-100, 100), breaks = seq(-100, 100, by = 10)) + 
   theme_cowplot() + 
   coord_flip() +
-  labs(y="",x="") +
+   labs(y="Percentage of responses that agree or disagree",x="") +
   theme(axis.text.y = element_text(size = 8),
         axis.text.x = element_text(size = 8,
                                    hjust = 1,
                                    angle = 45),
         strip.text.y = element_text(size = 8,
                                     angle = 0)) +
-  theme(legend.position = c(0.95, -0.15),
+  theme(legend.position = "bottom",
         legend.direction = "horizontal",
         legend.justification="right",
         legend.title = element_text(size = 9),
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 8),
+        axis.ticks = element_blank(),
+        axis.title = element_text(size = 9)) +
+  guides(y.sec = guide_axis_manual(
+    title = "'Neither agree nor disagree' or 'Prefer not to say'",
+    breaks = names(mid),
+    labels = mid))
 impacts_socio_fig
 
 ```
@@ -344,7 +381,7 @@ ggsave2(filename = here::here("figures", "socio_impacts_figure.png"),
   plot = impacts_socio_fig,
   device = "png",
   width = 183,
-  height = 83,
+  height = 93,
   units = "mm"
 )
 ```
