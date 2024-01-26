@@ -271,8 +271,26 @@ save_plot(here::here("figures", "impacts_fig_both.pdf"), impacts_fig_both, base_
 
 ## Run PCA
 ```{r}
+library(hopkins)
+library(paran)
+library(factoextra)
 likert_pca <- prcomp(r2_responses_longer[ ,c(13:57)], center=TRUE, scale. = TRUE)
 summary(likert_pca)
+paran(r2_responses_longer[ ,c(13:57)], iterations=10000, quietly=FALSE,
+    status=FALSE, all=TRUE, cfa=FALSE, graph=TRUE,
+    color=TRUE, col=c("black","red","blue"),
+    lty=c(1,2,3), lwd=1, legend=TRUE, file="",
+    width=640, height=640, grdevice="png", seed=0, mat=NA, n=NA)
+#using parallel analysis, only 3 factors should be retained because they have eigenvalues greater than 1, and also 3 have higher eigenvalues than random
+eig.val.r2<-get_eigenvalue(likert_pca) #kaiser criterion
+eig.val.r2
+#suggests 12 dimesions with values over 1, 46% of variance explained by 3 dimensions, 79% by 12 dimensions
+results <- likert_pca$x
+hopkins(r2_responses_longer[ ,c(13:57)], m=nrow(results)-1) 
+clusterabilitytest(r2_responses_longer[ ,c(13:57)], "dip", reduction = "pca")
+clusterabilitytest(r2_responses_longer[ ,c(13:57)], "dip", reduction = "distance")
+clusterabilitytest(r2_responses_longer[ ,c(13:57)], "silverman", reduction = "pca")
+#all four measures of clusterability found no clustering in the data
 
 #Show just dots (individuals)
 ggbiplot(likert_pca, var.axes=FALSE) + theme_classic() 

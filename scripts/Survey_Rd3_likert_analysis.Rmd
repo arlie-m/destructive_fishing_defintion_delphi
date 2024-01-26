@@ -110,6 +110,61 @@ tab_nonconsensus <- tab %>%
 
 11 of the questions asked in Rd 3 have reached consensus threshold (70%). Therefore, will need to follow up with the respondents who disareed with the consensus for about . Leave the rest as topics for which no consensus could be reached in this process. 
 
+## PCA round 3.
+
+```{r pca r3}
+#take r3_likert_responses, re-shape, convert to text responses to number
+
+r3_pca_data <- t(r3_likert_responses) %>% 
+  as_tibble() %>% 
+  row_to_names(1)
+factor_cols <- colnames(r3_pca_data[,4:28])
+r3_mylevels<-c("Strongly agree","Somewhat agree", "Prefer not to say", "Somewhat disagree", "Strongly disagree")
+r3_pca_data[factor_cols] <- lapply(r3_pca_data[factor_cols], function(x)  ordered(x, 
+   levels = c(r3_mylevels), 
+       labels = c('5', '4', '3', '2', '1')))
+
+r3_pca_data[factor_cols] <- lapply(r3_pca_data[factor_cols], function(x) as.numeric(x))
+                                   
+r3_likert_pca <- prcomp(r3_pca_data[ ,c(4:28)], center=TRUE, scale. = TRUE)
+summary(r3_likert_pca)
+
+library(hopkins)
+library(paran)
+library(factoextra)
+paran(r3_pca_data[ ,c(4:28)], iterations=10000, quietly=FALSE,
+    status=FALSE, all=TRUE, cfa=FALSE, graph=TRUE,
+    color=TRUE, col=c("black","red","blue"),
+    lty=c(1,2,3), lwd=1, legend=TRUE, file="",
+    width=640, height=640, grdevice="png", seed=0, mat=NA, n=NA)
+#using parallel analysis, only 3 factors should be retained because they have eigenvalues greater than 1, and also 3 have higher eigenvalues than random
+eig.val.r3<-get_eigenvalue(r3_likert_pca) #kaiser criterion
+eig.val.r3
+# 6 dimesions with eigenvalues over 1. 57% of variance is explained by 3 dimensions, 74% by 6 dimensions.
+results <- r3_likert_pca$x
+hopkins(r3_pca_data[ ,c(4:28)], m=nrow(results)-1) 
+clusterabilitytest(r3_pca_data[ ,c(4:28)], "dip")
+clusterabilitytest(r3_pca_data[ ,c(4:28)], "dip", reduction = "distance")
+clusterabilitytest(r3_pca_data[ ,c(4:28)], "silverman")
+#all four measures of clusterability found no clustering in the data
+
+#Show just dots (individuals)
+ggbiplot(r3_likert_pca, var.axes=FALSE) + theme_classic() 
+
+#Look at comparison with sector
+r3_sector_pca <- ggbiplot(r3_likert_pca, ellipse=TRUE, groups=r3_pca_data$sector, var.axes=FALSE) +
+geom_point(aes(colour = r3_pca_data$sector)) +
+scale_color_brewer(type = "qual", palette = "Dark2") + 
+  theme_classic()
+r3_sector_pca
+ggsave2(here::here("figures", "r3_sector_pca.jpg"),
+  plot = r3_sector_pca,
+  device = "jpg",
+  width = 20,
+  height = 10,
+  units = "cm")
+```
+
 ## Figures
 
 ### Prepare data for plotting

@@ -11,6 +11,7 @@ knit: (function(inputFile, encoding) {
 knitr::opts_chunk$set(echo = TRUE)
 library(devtools)
 install_github("vqv/ggbiplot")
+library(vegan)
 library(ggbiplot)
 library(missMDA)
 library(tidyverse)
@@ -18,6 +19,7 @@ library(here)
 library(readxl)
 library(ggh4x)
 library(cowplot)
+library(hopkins)
 ```
 
 ## Load data
@@ -123,12 +125,32 @@ Now we can actually run the PCA
 ```{r pca2}
 gearpca <- prcomp(pcadata[ ,c(7:54)], center=TRUE, scale. = TRUE)
 summary(gearpca)
+paran(pcadata[ ,c(7:54)], iterations=10000, quietly=FALSE,
+    status=FALSE, all=TRUE, cfa=FALSE, graph=TRUE,
+    color=TRUE, col=c("black","red","blue"),
+    lty=c(1,2,3), lwd=1, legend=TRUE, file="",
+    width=640, height=640, grdevice="png", seed=0, mat=NA, n=NA)
+#using parallel analysis, only 3 factors should be retained because they have eigenvalues greater than 1, and also 3 have higher eigenvalues than random
+eig.val<-get_eigenvalue(gearpca) #kaiser criterion
+eig.val
+#since 8 dimensions have eigenvalues over 1, and therefore that 8 could be retained for further analysis (based on Kaiser criterion). In this instance, 67% of variance is explained by 3 dimesions, 81% by 8 dimensions
+#Now we redo the PCA, this time with 3 dimesions and test for clustering using hopkins, dist sip, and pca silverman
+gearpca.2<-prcomp(pcadata[ ,c(7:54)], center=FALSE, scale.=FALSE, rank. = 3)
+summary(gearpca.2)
+results <- gearpca.2$x
+hopkins(pcadata[ ,c(7:54)], m=nrow(results)-1) 
+clusterabilitytest(pcadata[ ,c(7:54)], "dip")
+clusterabilitytest(pcadata[ ,c(7:54)], "dip", reduction = "distance")
+clusterabilitytest(pcadata[ ,c(7:54)], "silverman")
+#all four measures of clusterability found no clustering in the data, therefore no further tests conducted.
 ```
 
 ## Visualise the PCA
 Now the we have the PCA we can plot it. Here we use a range of groupings (based on demographic data of respondents). 
 
 ```{r}
+
+
 #Show just dots (individuals)
 ggbiplot(gearpca, var.axes=FALSE) + theme_classic() 
 
