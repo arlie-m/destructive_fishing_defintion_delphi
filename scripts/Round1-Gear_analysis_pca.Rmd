@@ -38,6 +38,7 @@ long_data <- pivot_longer(surveydata %>% select("name", "Purse seines":"Blast/ex
   drop_na() %>% 
   dplyr::group_by(Gear) %>% 
   dplyr::mutate(gear_median = median(response)) %>% 
+  dplyr::mutate(gear_mean = mean(response)) %>% 
   dplyr::group_by(Category) %>% 
   dplyr::mutate(cat_median = median(response))
 
@@ -53,7 +54,7 @@ Now that the data is in the correct format, we can visualise it as a violin plot
 ```{r gear plot}
 gear_plot <- ggplot(long_data, aes(x = short_name, y = response, fill = gear_median)) + 
   geom_violin(alpha = 0.7, colour = "darkgrey") +
-  stat_summary(fun = "median", colour = "black", size = 2, geom = "point") +
+  stat_summary(fun = "mean", colour = "black", size = 2, geom = "point") +
   scale_fill_viridis_c(name = "Median response", alpha = 0.7) +
   scale_color_viridis_c() +
   facet_wrap(~Category, scales = "free_x", shrink = FALSE) +
@@ -87,7 +88,7 @@ summary_data <- long_data %>%
             mean = mean(response), 
             stdev = sd(response),
             median = median(response)) %>% 
-  dplyr::select(Category, Gear, median, everything())
+  dplyr::select(Category, Gear, median, mean, everything())
 summary_data
 ```
 
