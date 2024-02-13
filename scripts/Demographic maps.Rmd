@@ -172,7 +172,7 @@ country_worked_summarised <- country_information %>%
 
 #all data
 survey_data_summarised <- country_from_summarised %>% 
-  left_join(country_worked_summarised)
+  full_join(country_worked_summarised)
 
 ```
 
@@ -193,7 +193,7 @@ country_worked_r2_summarised <- country_information_r2 %>%
   dplyr::mutate(worked_log_r2 = log10(worked_r2))
 #all data R2
 survey_data_summarised_r2 <- country_from_r2_summarised %>% 
-  left_join(country_worked_r2_summarised)
+  full_join(country_worked_r2_summarised)
 
 #country from R3
 country_from_r3_summarised <- country_information_r3 %>% 
@@ -209,7 +209,7 @@ country_worked_r3_summarised <- country_information_r3 %>%
   dplyr::mutate(worked_log_r3 = log10(worked_r3))
 #all data R2
 survey_data_summarised_r3 <- country_from_r3_summarised %>% 
-  left_join(country_worked_r3_summarised)
+  full_join(country_worked_r3_summarised)
 ```
 
 Now combining the data from all rounds to generate maps and tables,
