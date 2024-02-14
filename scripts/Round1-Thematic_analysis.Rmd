@@ -152,4 +152,6 @@ plot_all
 save_plot(here("figures", "impacts_fig.png"), plot_impacts2, base_width = 183, base_height = 50, units = "mm")
 save_plot(here("figures", "concepts-impacts_fig.png"), plot_all, base_width = 183, base_height = 125, units = "mm")
 save_plot(here("figures", "drivers_fig.png"), drivers_fig, base_width = 183, base_height = 50, units = "mm")
+
+save_plot(here("figures", "Figure_1.pdf"), plot_all, base_width = 183, base_height = 125, units = "mm")
 ```

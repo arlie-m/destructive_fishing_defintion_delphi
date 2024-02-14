@@ -245,7 +245,15 @@ chars_concept_fig
 ggsave2(filename = here::here("figures", "concept_figure.png"),
   plot = chars_concept_fig,
   device = "png",
-  width = 183,
+  width = 180,
+  height = 133,
+  units = "mm"
+)
+
+ggsave2(filename = here::here("figures", "Figure_2.pdf"),
+  plot = chars_concept_fig,
+  device = "pdf",
+  width = 180,
   height = 133,
   units = "mm"
 )
@@ -290,7 +298,15 @@ chars_scope_fig
 ggsave2(filename = here::here("figures", "scope_figure.png"),
   plot = chars_scope_fig,
   device = "png",
-  width = 183,
+  width = 180,
+  height = 163,
+  units = "mm"
+)
+
+ggsave2(filename = here::here("figures", "Figure_5.pdf"),
+  plot = chars_scope_fig,
+  device = "pdf",
+  width = 180,
   height = 163,
   units = "mm"
 )
@@ -335,7 +351,15 @@ impacts_eco_fig
 ggsave2(filename = here::here("figures", "eco_impacts_figure.png"),
   plot = impacts_eco_fig,
   device = "png",
-  width = 183,
+  width = 180,
+  height = 113,
+  units = "mm"
+)
+
+ggsave2(filename = here::here("figures", "Figure_3.pdf"),
+  plot = impacts_eco_fig,
+  device = "pdf",
+  width = 180,
   height = 113,
   units = "mm"
 )
@@ -380,7 +404,15 @@ Save the plot
 ggsave2(filename = here::here("figures", "socio_impacts_figure.png"),
   plot = impacts_socio_fig,
   device = "png",
-  width = 183,
+  width = 180,
+  height = 93,
+  units = "mm"
+)
+
+ggsave2(filename = here::here("figures", "Figure_4.pdf"),
+  plot = impacts_socio_fig,
+  device = "pdf",
+  width = 180,
   height = 93,
   units = "mm"
 )

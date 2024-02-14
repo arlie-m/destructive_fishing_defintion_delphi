@@ -76,6 +76,7 @@ save the plot
 
 ```{r save gear plot}
 save_plot(here::here("figures", "gear_plot.png"), gear_plot, base_width = 180, base_height = 125, units = "mm")
+save_plot(here::here("figures", "Figure_6.pdf"), gear_plot, base_width = 180, base_height = 125, units = "mm")
 ```
 
 Create table showing the summary statistics for each gear.
