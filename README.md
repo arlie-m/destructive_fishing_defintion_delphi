@@ -7,6 +7,8 @@ This repository contains the scripts used to analyse the results of 3 rounds of 
 
 To ensure the anonymity of all respondents, some elements of the script are retained for illustrative purposes only because they cannot be run without using data that contains respondents personal information, which will not be made public. 
 
+[![DOI](https://zenodo.org/badge/712414627.svg)](https://doi.org/10.5281/zenodo.20937110)
+
 ## File structure
 
 scripts - scripts used to run the analyses and create the figures
